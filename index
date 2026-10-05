@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIPs Course Profile & AI Diagnostic Tool</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .drawer-transform {
+      transition: transform 0.3s ease-in-out;
+    }
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-xl font-bold flex items-center gap-2">
+          <i class="fa-solid me-1 fa-diagram-project text-indigo-400"></i>
+          HIPs Course Self-Diagnostic Tool
+        </h1>
+        <p class="text-xs text-slate-400 mt-0.5">AAC&U High-Impact Practices Assessment & AI Scaffolding Engine</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="resetBtn" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-md transition flex items-center gap-1.5 border border-slate-700">
+          <i class="fa-solid fa-rotate-left"></i> Reset Form
+        </button>
+        <button onclick="window.print()" class="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-md transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-print"></i> Export / Print
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Column: Diagnostic Matrix Form (7 cols) -->
+    <section class="lg:col-span-7 space-y-6">
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">1. Course Assessment Matrix</h2>
+            <p class="text-xs text-slate-500">Select the current tier for each of the 8 High-Impact dimensions below.</p>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100" id="completionBadge">0/8 Completed</span>
+        </div>
+
+        <!-- 8 Dimensions Selection List -->
+        <div id="dimensionsList" class="space-y-4">
+          <!-- Dynamically populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Visual Dashboard & Analytics (5 cols) -->
+    <section class="lg:col-span-5 space-y-6 lg:sticky lg:top-24 self-start">
+      
+      <!-- Radar Chart Card -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-base font-bold text-slate-900">2. HIPs Profile Map</h2>
+          <span class="text-xs text-slate-400">Click a point or title to inspect</span>
+        </div>
+        <div class="relative w-full aspect-square max-w-sm mx-auto">
+          <canvas id="hipsRadarChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Quick Guidance Banner -->
+      <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-5 rounded-xl shadow-sm border border-slate-800 relative overflow-hidden">
+        <div class="relative z-10 space-y-2">
+          <div class="flex items-center gap-2 text-indigo-300 font-semibold text-sm">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> AI Integration Ready
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Click any dimension in the matrix or chart to launch the <strong>Action & AI Scaffolding Panel</strong>. Get tailored prompts designed to generate assignments, rubrics, and activities directly for your discipline.
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Option A: Dynamic Slide-Out Drawer Panel (4-Part Layout) -->
+  <div id="drawerBackdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-300"></div>
+  
+  <aside id="actionDrawer" class="fixed top-0 right-0 h-full w-full max-w-xl bg-white z-50 shadow-2xl drawer-transform translate-x-full flex flex-col border-l border-slate-200">
+    
+    <!-- Drawer Header -->
+    <div class="p-6 bg-slate-900 text-white flex justify-between items-start shrink-0">
+      <div class="space-y-1">
+        <span id="drawerDimCategory" class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Dimension 1</span>
+        <h3 id="drawerDimTitle" class="text-xl font-bold text-white">High Performance Expectations</h3>
+        <div id="drawerTierBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700 mt-2">
+          <!-- Tier Badge dynamically injected -->
+        </div>
+      </div>
+      <button id="closeDrawerBtn" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Drawer Content (Scrollable 4-Part Structure) -->
+    <div class="p-6 overflow-y-auto flex-1 space-y-6 scrollbar-thin">
+      
+      <!-- 1. Tier Level & Status -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">1</span>
+          Tier Status & Level
+        </h4>
+        <div id="drawerStatusText" class="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <!-- 2. Descriptor -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">2</span>
+          Current Descriptor & Indicators
+        </h4>
+        <p id="drawerDescriptor" class="text-sm text-slate-600 leading-relaxed p-4 bg-slate-50 border border-slate-100 rounded-lg">
+          <!-- Injected by JS -->
+        </p>
+      </div>
+
+      <!-- 3. Actionable Recommendation -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">3</span>
+          Actionable Growth Recommendation
+        </h4>
+        <div id="drawerRecommendation" class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg text-sm leading-relaxed">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <!-- 4. High-Quality AI Scaffolding Prompt -->
+      <div class="space-y-3 pt-2">
+        <div class="flex justify-between items-center">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">4</span>
+            High-Quality AI Implementation Prompt
+          </h4>
+          <button id="copyPromptBtn" class="px-2.5 py-1 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded transition flex items-center gap-1.5">
+            <i class="fa-regular fa-copy"></i> Copy Prompt
+          </button>
+        </div>
+        
+        <div class="relative">
+          <pre id="drawerAiPrompt" class="p-4 bg-slate-900 text-indigo-200 text-xs font-mono rounded-lg overflow-x-auto whitespace-pre-wrap leading-relaxed border border-slate-800 select-all"></pre>
+        </div>
+        <p class="text-[11px] text-slate-400 italic">
+          <i class="fa-solid fa-circle-info mr-1"></i> Replace bracketed text like <code>[Insert Course Name]</code> before submitting into ChatGPT, Claude, or Copilot.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="p-4 bg-slate-50 border-t border-slate-200 shrink-0 flex justify-end">
+      <button id="drawerCloseFooterBtn" class="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition">
+        Done Inspecting
+      </button>
+    </div>
+  </aside>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-3 rounded-lg shadow-xl text-xs font-medium flex items-center gap-2 z-50 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+    <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+    <span id="toastMsg">Prompt copied to clipboard!</span>
+  </div>
+
+  <!-- JavaScript Application Architecture -->
+  <script>
+    // Complete 8-Dimension Data Model
+    const dimensionsData = [
+      {
+        id: 1,
+        name: "High Performance Expectations",
+        shortName: "High Expectations",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Learning goals emphasize lower-level Bloom’s taxonomy tasks (recall, comprehension). High expectations are stated in the syllabus but lack explicit scaffolding in assignment design.",
+            recommendation: "Elevate learning outcomes from passive recall to analytical evaluation by introducing explicit criteria and high-challenge, low-stakes practice opportunities.",
+            aiPrompt: `Act as a University Instructional Designer specializing in High-Impact Practices (HIPs). I teach [Insert Course Name] for [Insert Student Level/Major]. \n\nCurrently, my main course assignment requires students to [Insert Current Assignment, e.g., summarize textbook chapters]. I want to raise the intellectual challenge of this task to target higher-order thinking (Analysis/Evaluation) without overwhelming students or dramatically increasing my grading burden.\n\nPlease generate:\n1. Three revised options for this assignment that require students to analyze, compare, or evaluate real scenarios in [Insert Discipline].\n2. A clear, 3-level performance rubric scale (Exceeds Expectations, Meets Expectations, Developing) outlining what high performance looks like.\n3. A brief 100-word syllabus callout explaining the higher expectations and how students will be supported to meet them.`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Assignments regularly require analysis and application, but criteria for exemplary performance are only partially defined or shared after submission.",
+            recommendation: "Provide exemplar student work models and explicit analytical rubrics prior to submission to make high performance criteria completely transparent.",
+            aiPrompt: `Act as a Higher Education Curriculum Expert. I teach [Insert Course Name]. My students complete [Insert Assignment Name, e.g., a critical analysis paper], but many struggle to reach top-tier analytical rigor.\n\nHelp me design explicit exemplars and scaffolding to clarify high expectations before they submit.\n\nPlease generate:\n1. A rubric checklist distinguishing 'Good' (B-level) work from 'Exemplary' (A-level) work in [Insert Discipline].\n2. A guided exercise where students evaluate a sample paper and annotate how to upgrade it.\n3. Three targeted self-assessment questions students must answer before turning in their final draft.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "High performance expectations are co-created or explicitly aligned with professional/disciplinary standards, with continuous scaffolding and authentic stretch goals.",
+            recommendation: "Sustain excellence by involving students in peer mentoring or publishing exemplary outcomes in department repositories or professional venues.",
+            aiPrompt: `Act as a Senior Academic Quality Lead. I teach [Insert Course Name], where students achieve Tier 3 High Performance Expectations on [Insert Project Name].\n\nI want to create a framework for students to archive, publish, or present their high-caliber work to external academic or professional audiences.\n\nPlease generate:\n1. A digital portfolio template for students to feature their top-tier course work.\n2. A student reflection guide on translating high-impact course achievements into resume accomplishments.\n3. A brief peer-mentorship protocol for high-performing students to coach future cohorts.`
+          }
+        }
+      },
+      {
+        id: 2,
+        name: "Significant Investment of Time and Effort",
+        shortName: "Time & Effort",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Student effort is unevenly distributed, spiking heavily before major exams or final papers with minimal sustained engagement during intermediate weeks.",
+            recommendation: "Break major term deliverables into a scaffolded, multi-stage project timeline with low-stakes weekly or bi-weekly progress checks.",
+            aiPrompt: `Act as a Higher Education Curriculum Expert. I teach [Insert Course Name], where students complete a major final project: [Insert Project Description]. Currently, students submit the entire project at the end of the term, leading to last-minute, low-quality work.\n\nHelp me convert this into a scaffolded project timeline spread across a [Insert Number]-week semester.\n\nPlease generate:\n1. A 4-stage milestone schedule with specific deliverables for each milestone.\n2. A low-stakes peer-check activity for Stage 2 that takes 15 minutes of class time.\n3. A student-facing task breakdown guide that estimates student time commitment (hours/week) for each phase.`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Milestones exist across the term, but students treat intermediate submissions as transactional deadlines rather than deep iterative effort.",
+            recommendation: "Incorporate reflective progress logs and required draft revisions between milestones to deepen sustained engagement.",
+            aiPrompt: `Act as an Instructional Designer. I teach [Insert Course Name]. Students submit milestones for [Insert Project], but treat them as quick checkpoints rather than engaging deeply.\n\nPlease generate:\n1. A structured 5-minute weekly 'Effort & Progress Log' template for students.\n2. A revision protocol requiring students to state how they acted on milestone feedback.\n3. A student-facing rationale on why sustained effort improves long-term mastery.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Extended, cumulative project work demands sustained, intense intellectual energy and problem-solving over a prolonged duration.",
+            recommendation: "Provide workload management strategies and structured collaborative accountability groups to support sustained high effort.",
+            aiPrompt: `Act as a Student Success & Curriculum Architect. I teach an intensive course: [Insert Course Name].\n\nHelp me design an accountability framework to support students through heavy project workloads.\n\nPlease generate:\n1. A peer-accountability triadic check-in system.\n2. A stress-mitigation and time-budgeting worksheet for complex team projects.\n3. A rubric evaluating sustained project management and iterative development.`
+          }
+        }
+      },
+      {
+        id: 3,
+        name: "Meaningful Interactions with Faculty and Peers",
+        shortName: "Interactions",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Interaction is predominantly instructor-led lecture with occasional unstructured Q&A; peer interaction is limited or optional.",
+            recommendation: "Embed structured peer-review cycles and short, high-impact micro-conferences into project work cycles.",
+            aiPrompt: `Act as an Instructional Designer expert in active learning. In my course [Insert Course Name], students work on [Insert Project/Assignment]. I want to create a structured, efficient peer review and faculty check-in protocol that improves work quality before final submission.\n\nPlease generate:\n1. A 20-minute, 3-step structured peer feedback protocol (Praise, Question, Polish) tailored to evaluate [Insert Specific Skill/Deliverable].\n2. A 3-question self-assessment sheet students must complete before meeting with me for a 3-minute mid-project conference.\n3. A brief guide on how students should respond to peer feedback in a revision memo.`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Peer discussions and group work occur regularly, but interactions lack structured roles, clear feedback protocols, or deep faculty feedback.",
+            recommendation: "Formalize peer roles and integrate formative micro-check-ins into team activities.",
+            aiPrompt: `Act as an Active Learning Consultant. I teach [Insert Course Name]. I use group discussions on [Insert Topic], but student interaction remains superficial.\n\nPlease generate:\n1. Four defined group roles (e.g., Synthesizer, Skeptic, Advocate, Recorder) tailored to my topic.\n2. A structured 15-minute debate or collaborative mapping protocol.\n3. A faculty observation checklist to evaluate the depth of peer interaction.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Frequent, substantive interactions occur continuously between faculty and peers regarding course content, mentoring, and professional growth.",
+            recommendation: "Establish collaborative research or co-creation frameworks where faculty and students operate as co-investigators.",
+            aiPrompt: `Act as a Higher Education Mentorship Specialist. I teach [Insert Course Name].\n\nHelp me structure a co-creation framework where students collaborate directly with faculty on authentic disciplinary challenges.\n\nPlease generate:\n1. A bi-weekly research/project check-in template.\n2. A co-mentoring protocol for student leads.\n3. A qualitative evaluation tool for collaborative learning culture.`
+          }
+        }
+      },
+      {
+        id: 4,
+        name: "Experiences with Diversity & Global Perspectives",
+        shortName: "Diversity & Global",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Course content primarily presents single-perspective or traditional dominant frameworks, with limited engagement with diverse cultural or global contexts.",
+            recommendation: "Introduce comparative case studies or diverse scholarly perspectives that challenge foundational assumptions within the field.",
+            aiPrompt: `Act as a Culturally Responsive Pedagogy Specialist in higher education. I teach [Insert Course Name] focusing on [Insert Main Topic/Discipline]. Currently, my course material primarily focuses on traditional or domestic perspectives.\n\nHelp me diversify the perspectives in my curriculum without sacrificing core discipline coverage.\n\nPlease generate:\n1. Three alternative case study concepts or global examples that apply core course principles to diverse, underrepresented, or international contexts.\n2. Two discussion prompts that encourage students to critically examine how cultural, economic, or geographic context alters problem-solving in [Insert Field].\n3. A list of 3 search strategies/databases to help me locate open-access readings from global scholars in this field.`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Diverse readings or guest speakers are included, but remain supplementary rather than integrated into core assessments or analytical models.",
+            recommendation: "Integrate diverse perspectives directly into core assessment rubrics and comparative analytical assignments.",
+            aiPrompt: `Act as a Curriculum Inclusion Expert. I teach [Insert Course Name]. I include diverse readings on [Insert Topics], but students are not required to synthesize them in major assignments.\n\nPlease generate:\n1. A comparative analysis essay prompt requiring integration of global/diverse frameworks.\n2. A grading rubric criterion assessing intercultural analytical depth.\n3. A structured discussion protocol for analyzing conflicting cultural viewpoints.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Students actively engage with diverse individuals, communities, or global systems, experiencing real worldview challenges and intercultural growth.",
+            recommendation: "Foster immersive community-engaged learning or virtual international exchanges (COIL) with structured reflection.",
+            aiPrompt: `Act as an Intercultural Education Director. I teach [Insert Course Name].\n\nHelp me structure a Collaborative Online International Learning (COIL) module or community cultural exchange.\n\nPlease generate:\n1. A 3-week joint project blueprint between my students and external partners.\n2. An intercultural communication reflection prompt.\n3. An assessment rubric for global civic competency.`
+          }
+        }
+      },
+      {
+        id: 5,
+        name: "Frequent, Timely, and Constructive Feedback",
+        shortName: "Feedback",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Feedback consists primarily of numeric grades on high-stakes assessments given late in the term with limited diagnostic comments.",
+            recommendation: "Implement iterative 'draft-and-resubmit' loops or milestone-based feedback that requires students to explicitly apply comments.",
+            aiPrompt: `Act as an Assessment Expert in Higher Education. I teach [Insert Course Name] with [Insert Class Size] students. I give detailed feedback on [Insert Assignment Name], but students rarely implement my feedback on subsequent work.\n\nHelp me design a sustainable feedback-application loop that fits my teaching workload.\n\nPlease generate:\n1. A 'Feedback Action Plan' template (1-page) that students must submit alongside their revised draft, showing where and how they addressed past feedback.\n2. A streamlined 4-part analytic rubric focusing strictly on growth, revision depth, and response to feedback.\n3. Three boilerplate text templates I can use for quick, high-impact feedback on recurring student errors in [Insert Specific Skill].`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Formative feedback is provided on drafts, but lacks immediate opportunities for students to revise or demonstrate growth before final grading.",
+            recommendation: "Establish required revision memos where students document how they addressed specific feedback points.",
+            aiPrompt: `Act as an Educational Assessment Specialist. I teach [Insert Course Name]. I provide comments on mid-term drafts, but want to ensure students actively process them.\n\nPlease generate:\n1. A revision memo submission template for students.\n2. A rapid-grading key/shorthand system for faculty comments.\n3. A self-assessment reflection prompt for post-assignment return.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Continuous, multi-source feedback (faculty, peer, external experts) is embedded throughout, directly informing immediate revision and mastery.",
+            recommendation: "Automate formative diagnostic checks and incorporate external professional feedback panels.",
+            aiPrompt: `Act as an Assessment Systems Designer. I teach [Insert Course Name].\n\nHelp me design an integrated multi-source feedback loop involving peers and industry professionals.\n\nPlease generate:\n1. A rubric for external reviewer evaluation.\n2. A automated feedback loop workflow for multi-stage deliverables.\n3. A student growth tracking rubric.`
+          }
+        }
+      },
+      {
+        id: 6,
+        name: "Authentic Real-World Application",
+        shortName: "Authentic Application",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Assignments are academic exercises evaluated solely by the instructor, lacking connection to real-world audiences, industry practices, or community issues.",
+            recommendation: "Shift standard academic papers into authentic professional deliverables (e.g., policy memos, client pitches, technical reports).",
+            aiPrompt: `Act as an Industry Liaison and Instructional Designer. I teach [Insert Course Name]. My current assignment is a traditional academic paper on [Insert Topic]. \n\nI want to transform this into an authentic, industry-standard deliverable that reflects actual work in [Insert Target Field/Profession].\n\nPlease generate:\n1. Three authentic deliverable formats (e.g., Executive Briefing, Client Strategy Proposal, Public Whitepaper) that require the same research depth as a term paper.\n2. A real-world scenario prompt framing the assignment for the student as a professional practitioner.\n3. An evaluation rubric aligned with professional communication standards in [Insert Industry].`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Assignments use real-world case studies or datasets, but final deliverables remain internal academic papers submitted only to the instructor.",
+            recommendation: "Partner with community clients or format deliverables for real external stakeholders.",
+            aiPrompt: `Act as an Experiential Learning Designer. I teach [Insert Course Name]. Students analyze real data about [Insert Topic], but turn in a standard paper.\n\nPlease generate:\n1. A client brief scenario for a local stakeholder or business.\n2. An executive presentation format replacing the term paper.\n3. A rubric assessing practical viability and stakeholder communication.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Students address authentic, unscripted problems for real clients, partners, or public audiences where outcomes have real consequences.",
+            recommendation: "Establish long-term community partnerships and client pitch events for student capstone projects.",
+            aiPrompt: `Act as a Service-Learning Director. I teach [Insert Course Name].\n\nHelp me design a client-facing capstone project framework.\n\nPlease generate:\n1. A Memorandum of Understanding outline for community partners.\n2. A client feedback rubric.\n3. A student ethical engagement code for real-world field work.`
+          }
+        }
+      },
+      {
+        id: 7,
+        name: "Public Demonstration of Competence",
+        shortName: "Public Demonstration",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Student work is submitted privately to the instructor and seen by no one else.",
+            recommendation: "Elevate internal presentations into a public showcase, digital exhibition, or community partner debrief.",
+            aiPrompt: `Act as an Experiential Learning Coordinator. My students in [Insert Course Name] create [Insert Project Type]. I want to upgrade their final presentation into a public demonstration of competence for [Insert Target Audience, e.g., campus community, local non-profits, industry professionals].\n\nPlease generate:\n1. An event structure outline for a 60-minute digital or live showcase (e.g., Interactive Poster Session, Lightning Pitch Showcase).\n2. A student prep guide explaining how to communicate complex technical work to a non-specialist audience in under 3 minutes.\n3. An external evaluator/audience feedback card template (3 brief questions) for guests to provide constructive notes.`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Work is presented to classmates during class time, but does not extend beyond the classroom walls or to external audiences.",
+            recommendation: "Publish student deliverables to a public course website, ePortfolio repository, or campus symposium.",
+            aiPrompt: `Act as a Digital Pedagogy Consultant. I teach [Insert Course Name]. Students present projects in class, but work ends there.\n\nPlease generate:\n1. A digital showcase plan (e.g., ePortfolio/website gallery).\n2. A copyright and public work permission form template.\n3. A rubric for public digital scholarship and visual presentation.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Students defend, exhibit, or publish work to external professionals, community stakeholders, or broader public audiences.",
+            recommendation: "Incorporate formal professional defense panels and external publication pipelines.",
+            aiPrompt: `Act as an Academic Conference Chair. I teach [Insert Course Name].\n\nHelp me design a formal professional jury panel defense for student final work.\n\nPlease generate:\n1. A panel defense schedule and protocol.\n2. Evaluation rubrics for industry judges.\n3. A student defense preparation guide.`
+          }
+        }
+      },
+      {
+        id: 8,
+        name: "Structured Reflection and Integration",
+        shortName: "Reflection & Integration",
+        tiers: {
+          1: {
+            title: "Foundational (Tier 1)",
+            descriptor: "Reflection is informal or limited to end-of-semester course evaluation surveys without guided connections to prior learning or career trajectories.",
+            recommendation: "Embed structured, integrative reflective prompts at key learning milestones using established reflection frameworks (e.g., DEAL model).",
+            aiPrompt: `Act as a High-Impact Practice (HIP) Specialist in Integrative Learning. I teach [Insert Course Name]. I want to implement structured reflection to help students connect course concepts to their personal goals and other academic courses.\n\nHelp me design a 3-part reflective learning log sequence based on the DEAL Model (Describe, Examine, Articulate Learning).\n\nPlease generate:\n1. Three distinct, guided prompts for the beginning, middle, and end of the semester.\n2. A 150-word student-facing overview explaining the cognitive value of integrative reflection.\n3. A simple Pass/Needs Revision grading rubric focused on depth of reflection rather than writing mechanics.`
+          },
+          2: {
+            title: "Developing (Tier 2)",
+            descriptor: "Reflection occurs at the end of major projects, but focuses primarily on self-assessment of performance rather than synthesizing learning across courses.",
+            recommendation: "Incorporate cross-curricular synthesis prompts connecting current learning to past coursework and future career aims.",
+            aiPrompt: `Act as an Integrative Pedagogy Expert. I teach [Insert Course Name]. Students write post-project reflections, but focus only on what went wrong/right.\n\nPlease generate:\n1. Three synthesis prompts connecting course theory to other discipline courses.\n2. An ePortfolio entry prompt linking project artifacts to career competencies.\n3. A rubric for integrative cognitive complexity.`
+          },
+          3: {
+            title: "Advanced / High-Impact (Tier 3)",
+            descriptor: "Reflection is continuous, cumulative, and integrative (e.g., ePortfolios), requiring students to explicitly synthesize knowledge across domains over time.",
+            recommendation: "Develop a program-wide ePortfolio strategy where students curate and defend integrative growth over multiple years.",
+            aiPrompt: `Act as an ePortfolio & Integrative Learning Director. I lead [Insert Program/Course].\n\nHelp me design a comprehensive capstone ePortfolio reflection architecture.\n\nPlease generate:\n1. A multi-section ePortfolio outline.\n2. Guiding reflective synthesis prompts for each section.\n3. An institutional VALUE rubric for Integrative Learning assessment.`
+          }
+        }
+      }
+    ];
+
+    // State Management
+    let userScores = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 };
+    let chartInstance = null;
+    let currentInspectedDimId = 1;
+
+    // DOM Elements
+    const dimensionsListEl = document.getElementById('dimensionsList');
+    const completionBadgeEl = document.getElementById('completionBadge');
+    const resetBtn = document.getElementById('resetBtn');
+    
+    // Drawer Elements
+    const drawerBackdrop = document.getElementById('drawerBackdrop');
+    const actionDrawer = document.getElementById('actionDrawer');
+    const closeDrawerBtn = document.getElementById('closeDrawerBtn');
+    const drawerCloseFooterBtn = document.getElementById('drawerCloseFooterBtn');
+    
+    const drawerDimCategory = document.getElementById('drawerDimCategory');
+    const drawerDimTitle = document.getElementById('drawerDimTitle');
+    const drawerTierBadge = document.getElementById('drawerTierBadge');
+    const drawerStatusText = document.getElementById('drawerStatusText');
+    const drawerDescriptor = document.getElementById('drawerDescriptor');
+    const drawerRecommendation = document.getElementById('drawerRecommendation');
+    const drawerAiPrompt = document.getElementById('drawerAiPrompt');
+    const copyPromptBtn = document.getElementById('copyPromptBtn');
+
+    // Initialize App
+    document.addEventListener('DOMContentLoaded', () => {
+      renderMatrixForm();
+      initRadarChart();
+      setupEventListeners();
+    });
+
+    // Render Matrix Questionnaire
+    function renderMatrixForm() {
+      dimensionsListEl.innerHTML = '';
+
+      dimensionsData.forEach(dim => {
+        const currentTier = userScores[dim.id];
+        
+        const card = document.createElement('div');
+        card.className = "p-4 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-lg transition space-y-3 cursor-pointer";
+        card.onclick = (e) => {
+          // Prevent drawer triggering if user clicks specifically on input radio
+          if(!e.target.closest('input')) {
+            openDrawer(dim.id);
+          }
+        };
+
+        card.innerHTML = `
+          <div class="flex justify-between items-start gap-2">
+            <div>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">Dimension ${dim.id}</span>
+              <h3 class="text-sm font-bold text-slate-800 mt-1">${dim.name}</h3>
+            </div>
+            <button onclick="openDrawer(${dim.id}); event.stopPropagation();" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
+              Inspect & Prompts <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 pt-1">
+            ${[1, 2, 3].map(tierNum => `
+              <label class="flex items-center justify-center p-2 rounded border text-xs font-medium cursor-pointer transition select-none ${
+                currentTier === tierNum 
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+              }">
+                <input type="radio" name="dim_${dim.id}" value="${tierNum}" ${currentTier === tierNum ? 'checked' : ''} 
+                       onchange="updateScore(${dim.id},${tierNum})" class="sr-only">
+                Tier ${tierNum}
+              </label>
+            `).join('')}
+          </div>
+        `;
+        dimensionsListEl.appendChild(card);
+      });
+
+      updateBadge();
+    }
+
+    // Update Scores & Chart
+    function updateScore(dimId, tier) {
+      userScores[dimId] = tier;
+      renderMatrixForm();
+      updateChart();
+      if (!actionDrawer.classList.contains('translate-x-full') && currentInspectedDimId === dimId) {
+        populateDrawer(dimId);
+      }
+    }
+
+    function updateBadge() {
+      completionBadgeEl.innerText = `8/8 Completed`;
+    }
+
+    // Initialize Radar Chart
+    function initRadarChart() {
+      const ctx = document.getElementById('hipsRadarChart').getContext('2d');
+      
+      chartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: dimensionsData.map(d => d.shortName),
+          datasets: [{
+            label: 'Current HIPs Tier',
+            data: dimensionsData.map(d => userScores[d.id]),
+            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+            borderColor: 'rgba(79, 70, 229, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(79, 70, 229, 1)',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            r: {
+              min: 0,
+              max: 3,
+              ticks: { stepSize: 1, display: true, backdropColor: 'transparent' },
+              grid: { color: '#e2e8f0' },
+              angleLines: { color: '#cbd5e1' },
+              pointLabels: { font: { size: 10, weight: '600' }, color: '#334155' }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          },
+          onClick: (evt, activeElements) => {
+            if (activeElements.length > 0) {
+              const index = activeElements[0].index;
+              openDrawer(dimensionsData[index].id);
+            }
+          }
+        }
+      });
+    }
+
+    function updateChart() {
+      if (chartInstance) {
+        chartInstance.data.datasets[0].data = dimensionsData.map(d => userScores[d.id]);
+        chartInstance.update();
+      }
+    }
+
+    // Drawer System (Option A Layout)
+    function openDrawer(dimId) {
+      currentInspectedDimId = dimId;
+      populateDrawer(dimId);
+      
+      drawerBackdrop.classList.remove('hidden');
+      setTimeout(() => {
+        drawerBackdrop.classList.remove('opacity-0');
+        actionDrawer.classList.remove('translate-x-full');
+      }, 10);
+    }
+
+    function closeDrawer() {
+      actionDrawer.classList.add('translate-x-full');
+      drawerBackdrop.classList.add('opacity-0');
+      setTimeout(() => {
+        drawerBackdrop.classList.add('hidden');
+      }, 300);
+    }
+
+    function populateDrawer(dimId) {
+      const dim = dimensionsData.find(d => d.id === dimId);
+      const currentTier = userScores[dimId];
+      const tierData = dim.tiers[currentTier];
+
+      drawerDimCategory.innerText = `Dimension ${dim.id}`;
+      drawerDimTitle.innerText = dim.name;
+      
+      drawerTierBadge.innerHTML = `
+        <i class="fa-solid fa-layer-group"></i> Currently Set to: <strong>Tier ${currentTier}</strong>
+      `;
+
+      drawerStatusText.innerText = `${tierData.title}`;
+      drawerDescriptor.innerText = tierData.descriptor;
+      drawerRecommendation.innerText = tierData.recommendation;
+      drawerAiPrompt.innerText = tierData.aiPrompt;
+    }
+
+    // Setup Listeners
+    function setupEventListeners() {
+      closeDrawerBtn.onclick = closeDrawer;
+      drawerCloseFooterBtn.onclick = closeDrawer;
+      drawerBackdrop.onclick = closeDrawer;
+
+      resetBtn.onclick = () => {
+        userScores = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 };
+        renderMatrixForm();
+        updateChart();
+        showToast("Diagnostic form reset to Tier 1 default.");
+      };
+
+      copyPromptBtn.onclick = () => {
+        const textToCopy = drawerAiPrompt.innerText;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          showToast("AI Scaffolding Prompt copied to clipboard!");
+        });
+      };
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
+      
+      toast.classList.remove('translate-y-10', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-10', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
